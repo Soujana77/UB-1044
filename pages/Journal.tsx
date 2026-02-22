@@ -1,205 +1,226 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { useApp } from "../context/AppContext";
-import { supabase } from "../services/supabaseClient";
-import { analyzeJournalSentiment } from "../services/geminiService";
 import {
-  PenTool,
-  Save,
-  Sparkles,
-  Calendar as CalendarIcon,
-  Loader2,
-} from "lucide-react";
-import { JournalEntry } from "../types";
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import jsPDF from "jspdf";
 
-/* ---------------- ANIMATION VARIANTS ---------------- */
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.12 },
-  },
-};
+interface JournalEntry {
+  id: string;
+  content: string;
+  mood: string;
+  score: number;
+  date: string;
+}
 
-const item = {
-  hidden: { opacity: 0, y: 25 },
-  show: { opacity: 1, y: 0 },
-};
+const moods = [
+  { emoji: "😊", label: "Happy", score: 2 },
+  { emoji: "😌", label: "Calm", score: 1 },
+  { emoji: "😔", label: "Sad", score: -1 },
+  { emoji: "😡", label: "Angry", score: -2 },
+  { emoji: "😴", label: "Tired", score: 0 },
+];
 
 const Journal = () => {
-  const { user, addXP, addNotification } = useApp();
-
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [content, setContent] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [selectedMood, setSelectedMood] = useState<any>(null);
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    fetchEntries();
+    const saved = localStorage.getItem("journalEntries");
+    if (saved) setEntries(JSON.parse(saved));
   }, []);
 
-  const fetchEntries = async () => {
-    if (!supabase) {
-      setIsLoading(false);
-      return;
-    }
+  useEffect(() => {
+    localStorage.setItem("journalEntries", JSON.stringify(entries));
+  }, [entries]);
 
-    const { data, error } = await supabase
-      .from("journal_entries")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+  const handleSave = () => {
+    if (!content.trim() || !selectedMood) return;
 
-    if (data && !error) setEntries(data);
-    setIsLoading(false);
+    const newEntry: JournalEntry = {
+      id: Date.now().toString(),
+      content,
+      mood: selectedMood.emoji,
+      score: selectedMood.score,
+      date: new Date().toISOString(),
+    };
+
+    setEntries([newEntry, ...entries]);
+    setContent("");
+    setSelectedMood(null);
   };
 
-  const handleSave = async () => {
-    if (!content.trim()) return;
-    setIsSaving(true);
+  const weeklyData = entries
+    .slice(0, 7)
+    .reverse()
+    .map(e => ({
+      date: new Date(e.date).toLocaleDateString(),
+      score: e.score,
+    }));
 
-    try {
-      const analysis = await analyzeJournalSentiment(content);
+  const averageScore =
+    entries.length > 0
+      ? (
+          entries.reduce((acc, e) => acc + e.score, 0) /
+          entries.length
+        ).toFixed(2)
+      : 0;
 
-      if (supabase) {
-        const { data } = await supabase
-          .from("journal_entries")
-          .insert({
-            user_id: user.id,
-            content,
-            mood_sentiment: analysis.sentiment,
-            ai_suggestion: analysis.suggestion,
-          })
-          .select();
-
-        if (data) setEntries([data[0], ...entries]);
-      }
-
-      addXP(30);
-      addNotification("Journal saved ✨");
-      setContent("");
-    } catch {
-      addNotification("Error saving journal.");
-    } finally {
-      setIsSaving(false);
-    }
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Mental Wellness Report", 20, 20);
+    doc.text(`Total Entries: ${entries.length}`, 20, 30);
+    doc.text(`Average Mood Score: ${averageScore}`, 20, 40);
+    doc.save("journal-report.pdf");
   };
 
   return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="p-6 max-w-4xl mx-auto pb-24 md:pb-6"
+    <div
+      className={`min-h-screen p-10 transition-all duration-700 ${
+        darkMode
+          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white"
+          : "bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100"
+      }`}
     >
-      {/* HEADER */}
-      <motion.header variants={item} className="mb-6">
-        <h2 className="text-3xl font-bold text-slate-800 flex items-center gap-2">
-          <PenTool className="text-purple-500" /> Mood Journal
-        </h2>
-        <p className="text-slate-500">
-          Express freely. Heal gently 💜
-        </p>
-      </motion.header>
+      <div className="max-w-6xl mx-auto">
 
-      {/* ✨ WRITING SECTION */}
-      <motion.div
-        variants={item}
-        whileHover={{ scale: 1.01 }}
-        className="relative bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50
-        p-6 rounded-3xl shadow-xl border border-white/40 backdrop-blur-xl"
-      >
-        <Sparkles className="absolute top-4 right-4 text-purple-300 animate-pulse" />
+        {/* Header */}
+        <div className="flex justify-between items-center mb-12">
+          <h1 className="text-5xl font-bold tracking-tight">
+            Emotion Intelligence Dashboard
+          </h1>
 
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Write what's in your heart..."
-          className="w-full h-40 p-6 bg-white/70 backdrop-blur rounded-2xl
-          resize-none focus:outline-none focus:ring-4 focus:ring-purple-200
-          text-slate-700 text-lg shadow-inner transition-all"
-        />
-
-        <div className="flex justify-end mt-4">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleSave}
-            disabled={isSaving || !content.trim()}
-            className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white
-            px-8 py-3 rounded-2xl shadow-lg flex items-center gap-2
-            disabled:opacity-50"
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 transition rounded-lg text-white shadow-lg"
           >
-            {isSaving ? (
-              <Loader2 className="animate-spin" size={20} />
-            ) : (
-              <Save size={20} />
-            )}
-            Save Entry
-          </motion.button>
+            Toggle {darkMode ? "Light" : "Dark"}
+          </button>
         </div>
-      </motion.div>
 
-      {/* HISTORY */}
-      <motion.h3
-        variants={item}
-        className="font-bold text-slate-700 mt-8 mb-4"
-      >
-        Your Reflections
-      </motion.h3>
-
-      <motion.div variants={container} className="space-y-4">
-        {isLoading ? (
-          <motion.div
-            variants={item}
-            className="text-center text-slate-400"
-          >
-            Loading...
-          </motion.div>
-        ) : entries.length === 0 ? (
-          <motion.div
-            variants={item}
-            className="text-center text-slate-400"
-          >
-            No entries yet 🌸
-          </motion.div>
-        ) : (
-          entries.map((entry) => (
-            <motion.div
-              key={entry.id}
-              variants={item}
-              whileHover={{ scale: 1.02 }}
-              className="bg-white/80 backdrop-blur p-6 rounded-2xl
-              border border-slate-100 shadow-lg"
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-8 mb-12">
+          {[
+            { label: "Total Entries", value: entries.length },
+            { label: "Average Mood Score", value: averageScore },
+            { label: "Last Mood", value: entries[0]?.mood || "-" },
+          ].map((item, index) => (
+            <div
+              key={index}
+              className={`p-8 rounded-3xl backdrop-blur-lg shadow-2xl border transition-all duration-500 hover:scale-105 ${
+                darkMode
+                  ? "bg-gray-800/60 border-gray-700"
+                  : "bg-white/60 border-white/40"
+              }`}
             >
-              <div className="flex justify-between mb-3 text-xs text-slate-400">
-                <span className="flex items-center gap-1">
-                  <CalendarIcon size={14} />
-                  {new Date(entry.created_at).toLocaleDateString()}
-                </span>
-                <span className="font-semibold text-purple-600">
-                  {entry.mood_sentiment}
-                </span>
-              </div>
+              <p className="text-gray-400 mb-2">{item.label}</p>
+              <h2 className="text-4xl font-bold text-indigo-500">
+                {item.value}
+              </h2>
+            </div>
+          ))}
+        </div>
 
-              <p className="text-slate-700 mb-4 whitespace-pre-wrap">
-                {entry.content}
-              </p>
+        {/* Weekly Trend Chart */}
+        {entries.length > 0 && (
+          <div
+            className={`p-8 rounded-3xl mb-12 backdrop-blur-lg shadow-2xl border ${
+              darkMode
+                ? "bg-gray-800/60 border-gray-700"
+                : "bg-white/70 border-white/40"
+            }`}
+          >
+            <h2 className="mb-6 text-xl font-semibold">
+              Weekly Mood Trend
+            </h2>
 
-              {entry.ai_suggestion && (
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50
-                p-4 rounded-xl flex gap-3">
-                  <Sparkles size={18} className="text-purple-500 mt-1" />
-                  <p className="text-sm text-slate-600 italic">
-                    "{entry.ai_suggestion}"
-                  </p>
-                </div>
-              )}
-            </motion.div>
-          ))
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={weeklyData}>
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#6366f1"
+                  strokeWidth={3}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         )}
-      </motion.div>
-    </motion.div>
+
+        {/* Entry Section */}
+        <div
+          className={`p-10 rounded-3xl shadow-2xl backdrop-blur-xl border transition-all duration-500 ${
+            darkMode
+              ? "bg-gray-800/60 border-gray-700"
+              : "bg-white/70 border-white/40"
+          }`}
+        >
+          <h2 className="text-xl font-semibold mb-6">
+            New Entry
+          </h2>
+
+          <div className="flex gap-6 mb-8">
+            {moods.map(mood => (
+              <button
+                key={mood.emoji}
+                onClick={() => setSelectedMood(mood)}
+                className={`w-14 h-14 rounded-2xl text-2xl transition-all duration-300 shadow-lg ${
+                  selectedMood?.emoji === mood.emoji
+                    ? "bg-indigo-600 text-white scale-125 shadow-indigo-500/50"
+                    : darkMode
+                    ? "bg-gray-700 hover:scale-110"
+                    : "bg-white hover:scale-110"
+                }`}
+              >
+                {mood.emoji}
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            value={content}
+            onChange={(e) =>
+              setContent(e.target.value.slice(0, 300))
+            }
+            rows={5}
+            placeholder="Write your thoughts..."
+            className={`w-full p-6 rounded-2xl mb-6 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              darkMode
+                ? "bg-gray-900 text-white"
+                : "bg-white text-black"
+            }`}
+          />
+
+          <div className="flex gap-6">
+            <button
+              onClick={handleSave}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:scale-105 transition-all text-white px-10 py-3 rounded-xl shadow-xl"
+            >
+              Save Entry
+            </button>
+
+            {entries.length > 0 && (
+              <button
+                onClick={exportPDF}
+                className="bg-green-600 hover:bg-green-700 transition text-white px-8 py-3 rounded-xl shadow-lg"
+              >
+                Export PDF
+              </button>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </div>
   );
 };
 
