@@ -1,111 +1,144 @@
-import { motion } from "framer-motion";
-import { Phone, Calendar, HeartHandshake } from "lucide-react";
+import React, { useState } from "react";
+import { MOCK_COUNSELORS } from "../constants";
+import { Counselor } from "../types";
 
-const psychiatrists = [
-  {
-    name: "Dr. Ananya Rao",
-    specialty: "Clinical Psychiatrist",
-    experience: "12+ years experience",
-    phone: "+91 98765 43210",
-  },
-  {
-    name: "Dr. Rohan Mehta",
-    specialty: "Mental Health Counselor",
-    experience: "8+ years experience",
-    phone: "+91 91234 56789",
-  },
-  {
-    name: "Dr. Sarah Williams",
-    specialty: "Cognitive Behavioral Therapist",
-    experience: "10+ years experience",
-    phone: "+91 99887 66554",
-  },
-];
+const Booking = () => {
+  const [selectedCounselor, setSelectedCounselor] = useState<Counselor | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<string>("");
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-const Counselling = () => {
-  return (
-    <div className="p-8">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="mb-10"
-      >
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">
-          Counseling & Support
-        </h1>
-        <p className="text-gray-600 max-w-2xl">
-          Professional help can make a real difference. Reach out to certified
-          mental health professionals for guidance, clarity, and emotional
-          support.
-        </p>
-      </motion.div>
+  const handleConfirm = () => {
+    if (!selectedCounselor || !selectedSlot) return;
 
-      {/* Emergency Card */}
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="bg-gradient-to-r from-violet-600 to-fuchsia-600
-        text-white rounded-2xl p-6 mb-12 flex items-center gap-6 shadow-xl"
-      >
-        <HeartHandshake size={40} />
-        <div>
-          <h2 className="text-xl font-semibold">You are not alone</h2>
-          <p className="opacity-90">
-            If you’re feeling overwhelmed, talking to someone can help more than
-            you think.
+    setLoading(true);
+
+    setTimeout(() => {
+      setLoading(false);
+      setSuccess(true);
+    }, 800);
+  };
+
+  // ================= SUCCESS SCREEN =================
+  if (success && selectedCounselor) {
+    return (
+      <div className="flex justify-center items-center p-10">
+        <div className="bg-white shadow-xl rounded-2xl p-10 max-w-md text-center">
+          <h2 className="text-3xl font-bold text-green-600 mb-4">
+            Appointment Confirmed ✅
+          </h2>
+
+          <p className="text-gray-600 mb-6">
+            Your appointment with <strong>{selectedCounselor.name}</strong> at{" "}
+            <strong>{selectedSlot}</strong> has been booked.
           </p>
-        </div>
-      </motion.div>
 
-      {/* Psychiatrist Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {psychiatrists.map((doc, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.15 }}
-            whileHover={{ scale: 1.05 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
+          <button
+            onClick={() => {
+              setSuccess(false);
+              setSelectedCounselor(null);
+              setSelectedSlot("");
+            }}
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:opacity-90 transition"
           >
-            <h3 className="text-xl font-semibold text-gray-800">
-              {doc.name}
-            </h3>
-            <p className="text-violet-600 font-medium mt-1">
-              {doc.specialty}
-            </p>
-            <p className="text-gray-500 text-sm mt-2">
-              {doc.experience}
-            </p>
+            Book Another
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-            <div className="mt-6 flex flex-col gap-3">
-              <a
-                href={`tel:${doc.phone}`}
-                className="flex items-center justify-center gap-2
-                bg-violet-600 text-white py-2 rounded-xl
-                hover:bg-violet-700 transition"
-              >
-                <Phone size={18} />
-                Call Now
-              </a>
+  return (
+    <div className="max-w-6xl mx-auto p-8">
+      <h1 className="text-3xl font-bold mb-10">Book an Appointment</h1>
 
-              <button
-                className="flex items-center justify-center gap-2
-                border border-violet-600 text-violet-600 py-2 rounded-xl
-                hover:bg-violet-50 transition"
-              >
-                <Calendar size={18} />
-                Book Session
-              </button>
+      {/* ================= COUNSELOR CARDS ================= */}
+      <div className="grid md:grid-cols-2 gap-8">
+        {MOCK_COUNSELORS.map((counselor) => (
+          <div
+            key={counselor.id}
+            onClick={() => {
+              setSelectedCounselor(counselor);
+              setSelectedSlot("");
+            }}
+            className={`p-6 rounded-2xl border cursor-pointer transition-all duration-300 hover:shadow-lg ${
+              selectedCounselor?.id === counselor.id
+                ? "border-indigo-600 bg-indigo-50"
+                : "border-gray-200"
+            }`}
+          >
+            <div className="flex items-center gap-5">
+              {/* Profile Image */}
+              <img
+                src={counselor.imageUrl}
+                alt={counselor.name}
+                className="w-20 h-20 rounded-full object-cover"
+              />
+
+              <div>
+                <h3 className="text-lg font-semibold">{counselor.name}</h3>
+                <p className="text-sm text-gray-500">
+                  {counselor.specialty}
+                </p>
+
+                {/* Rating */}
+                <div className="flex items-center mt-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <span
+                      key={star}
+                      className={`text-lg ${
+                        counselor.rating >= star
+                          ? "text-yellow-400"
+                          : "text-gray-300"
+                      }`}
+                    >
+                      ★
+                    </span>
+                  ))}
+                  <span className="ml-2 text-sm text-gray-600">
+                    {counselor.rating}
+                  </span>
+                </div>
+              </div>
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
+
+      {/* ================= SLOT SELECTION ================= */}
+      {selectedCounselor && (
+        <div className="mt-12 bg-white p-8 rounded-2xl shadow-lg">
+          <h2 className="text-xl font-semibold mb-6">
+            Booking with {selectedCounselor.name}
+          </h2>
+
+          <div className="flex flex-wrap gap-4 mb-8">
+            {selectedCounselor.availableSlots.map((slot) => (
+              <button
+                key={slot}
+                onClick={() => setSelectedSlot(slot)}
+                className={`px-5 py-2 rounded-xl border transition ${
+                  selectedSlot === slot
+                    ? "bg-indigo-600 text-white"
+                    : "border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                {slot}
+              </button>
+            ))}
+          </div>
+
+          <button
+            disabled={!selectedSlot || loading}
+            onClick={handleConfirm}
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl disabled:opacity-50 hover:opacity-90 transition"
+          >
+            {loading ? "Processing..." : "Confirm Appointment"}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
 
-export default Counselling;
+export default Booking;

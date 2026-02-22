@@ -38,8 +38,22 @@ export const MOCK_POSTS: ForumPost[] = [
 ];
 
 export const MOCK_COUNSELORS: Counselor[] = [
-  { id: '1', name: 'Dr. Sarah Chen', specialty: 'Academic Stress & Anxiety', availableSlots: ['Mon 10:00 AM', 'Tue 2:00 PM'], rating: 4.9, imageUrl: 'https://picsum.photos/100/100?random=1' },
-  { id: '2', name: 'Mr. James Wilson', specialty: 'Career Guidance & Depression', availableSlots: ['Wed 11:00 AM', 'Fri 4:00 PM'], rating: 4.8, imageUrl: 'https://picsum.photos/100/100?random=2' },
+  { 
+    id: '1', 
+    name: 'Dr. Sarah Chen', 
+    specialty: 'Academic Stress & Anxiety', 
+    availableSlots: ['Mon 10:00 AM', 'Tue 2:00 PM'], 
+    rating: 4.9, 
+    imageUrl: 'https://picsum.photos/100/100?random=1' 
+  },
+  { 
+    id: '2', 
+    name: 'Mr. James Wilson', 
+    specialty: 'Career Guidance & Depression', 
+    availableSlots: ['Wed 11:00 AM', 'Fri 4:00 PM'], 
+    rating: 4.8, 
+    imageUrl: 'https://picsum.photos/100/100?random=2' 
+  },
 ];
 
 export const LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500];
